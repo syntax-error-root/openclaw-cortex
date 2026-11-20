@@ -58,21 +58,28 @@ def search_index_files(query, fact_type=None, recent_days=None):
     return results
 
 
-def search_relations(query):
+def search_relations(query, include_archived=False):
     results = []
-    if not RELATIONS_FILE.exists():
-        return results
-    try:
-        with open(RELATIONS_FILE, "r") as f:
-            for line in f:
-                stripped = line.strip()
-                if not stripped.startswith("- "):
-                    continue
-                if query and query.lower() not in stripped.lower():
-                    continue
-                results.append(stripped)
-    except FileNotFoundError:
-        pass
+    files_to_check = [RELATIONS_FILE]
+    if include_archived:
+        archived_rel = ARCHIVE_DIR / "relations.md"
+        if archived_rel.exists():
+            files_to_check.append(archived_rel)
+
+    for rel_path in files_to_check:
+        if not rel_path.exists():
+            continue
+        try:
+            with open(rel_path, "r") as f:
+                for line in f:
+                    stripped = line.strip()
+                    if not stripped.startswith("- "):
+                        continue
+                    if query and query.lower() not in stripped.lower():
+                        continue
+                    results.append(stripped)
+        except FileNotFoundError:
+            pass
     return results
 
 
@@ -137,7 +144,7 @@ def main():
     query = args.about or ""
     recent_days = args.days if args.recent else None
     results = search_index_files(query, args.type, recent_days)
-    relations = search_relations(query) if query else []
+    relations = search_relations(query, include_archived=args.include_archived) if query else []
     if args.include_archived:
         results.extend(search_archived(query, recent_days))
     output = format_results(results, relations)

@@ -65,6 +65,7 @@ Monolithic agent memory designs fail in predictable ways:
    │ • Active threads  │      │ • 500-word cap    │      │ • Knowledge Links │
    │ • Affective mood  │      │ • Scene captures  │      │ • Contradictions  │
    │ • Critical flags  │      │ • Character study │      │ • Memory Decay    │
+   │                   │      │                   │      │ • Graph Pruning   │
    └─────────┬─────────┘      └─────────┬─────────┘      └─────────┬─────────┘
              │                          │                          │
              └──────────────────────────┼──────────────────────────┘

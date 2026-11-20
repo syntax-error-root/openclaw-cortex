@@ -23,6 +23,8 @@ INDEX_DIR = BASE_DIR / "memory" / "index"
 ARCHIVE_DIR = BASE_DIR / "memory" / "archive"
 FLAGS_FILE = BASE_DIR / "memory" / "flags.md"
 PATTERNS_FILE = BASE_DIR / "memory" / "patterns.md"
+RELATIONS_FILE = BASE_DIR / "memory" / "relations.md"
+ARCHIVED_RELATIONS_FILE = ARCHIVE_DIR / "relations.md"
 
 STALE_THRESHOLD = 0.3
 CORE_FLOOR = 0.5
@@ -51,12 +53,142 @@ def run_script(name):
         return str(e), 2
 
 
+def get_active_entities():
+    """Extract all active entity identifiers from index files and user configuration."""
+    active = set()
+
+    # 1. Primary user / operator
+    user_file = BASE_DIR / "USER.md"
+    if user_file.exists():
+        try:
+            with open(user_file, "r") as f:
+                for line in f:
+                    if line.strip().lower().startswith("- **name:**"):
+                        val = line.split(":", 1)[1].strip().strip("*").strip()
+                        if val:
+                            active.add(val.lower())
+        except Exception:
+            pass
+    active.add("operator")
+    active.add("user")
+
+    # 2. Scan all active index files
+    if INDEX_DIR.exists():
+        for idx_file in INDEX_DIR.glob("*.md"):
+            try:
+                with open(idx_file, "r") as f:
+                    for line in f:
+                        stripped = line.strip()
+                        if not stripped.startswith("- "):
+                            continue
+                        content = stripped[2:].strip()
+                        # Extract before colon if present (e.g., "- Name: description")
+                        if ":" in content:
+                            ent = content.split(":", 1)[0].strip()
+                            if ent:
+                                active.add(ent.lower())
+                        # Also extract leading token/subject
+                        tokens = content.split()
+                        if tokens:
+                            active.add(tokens[0].lower())
+            except Exception:
+                pass
+
+    return active
+
+
+def prune_dangling_relations(archived_facts=None):
+    """Prune dangling relation edges from relations.md and archive them to preserve provenance.
+
+    A relation 'Subject --[rel]--> Object' is considered dangling if:
+    1. Subject or Object decayed into the archive during this or prior cycles.
+    2. Subject or Object no longer exists among active entities in index files.
+    """
+    if not RELATIONS_FILE.exists():
+        return 0
+
+    try:
+        with open(RELATIONS_FILE, "r") as f:
+            lines = f.readlines()
+    except Exception as e:
+        log_msg(f"Error reading relations file: {e}")
+        return 0
+
+    decayed_entities = set()
+    if archived_facts:
+        for fact_line in archived_facts:
+            stripped = fact_line.strip()
+            if stripped.startswith("- "):
+                content = stripped[2:].strip()
+                if ":" in content:
+                    decayed_entities.add(content.split(":", 1)[0].strip().lower())
+                tokens = content.split()
+                if tokens:
+                    decayed_entities.add(tokens[0].lower())
+
+    active_entities = get_active_entities()
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    kept_lines = []
+    pruned_relations = []
+    rel_pattern = re.compile(r"^-\s+(.+?)\s+--\[(.+?)\]-->\s+(.+?)(?:\s+(\[.*\]))?$")
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped.startswith("- "):
+            kept_lines.append(line)
+            continue
+
+        match = rel_pattern.match(stripped)
+        if not match:
+            kept_lines.append(line)
+            continue
+
+        subj = match.group(1).strip()
+        rel_type = match.group(2).strip()
+        obj_full = match.group(3).strip()
+        meta = match.group(4) or ""
+
+        subj_lower = subj.lower()
+        obj_lower = obj_full.lower()
+
+        is_decayed = (subj_lower in decayed_entities) or (obj_lower in decayed_entities)
+        is_orphan = (subj_lower not in active_entities) or (obj_lower not in active_entities)
+
+        if is_decayed or is_orphan:
+            reason = "entity_decay" if is_decayed else "orphan_node"
+            meta_str = meta.strip()
+            archived_entry = f"- {subj} --[{rel_type}]--> {obj_full}"
+            if meta_str:
+                archived_entry += f" {meta_str}"
+            archived_entry += f" [archived: {today_str}] [reason: {reason}]"
+            pruned_relations.append(archived_entry)
+        else:
+            kept_lines.append(line)
+
+    if pruned_relations:
+        with open(RELATIONS_FILE, "w") as f:
+            f.writelines(kept_lines)
+
+        ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+        archived_rel_file = ARCHIVE_DIR / "relations.md"
+        first_write = not archived_rel_file.exists() or archived_rel_file.stat().st_size == 0
+        with open(archived_rel_file, "a") as f:
+            if first_write:
+                f.write("# Archived Relations\n\n<!-- Relations pruned due to entity decay or orphan node references. -->\n\n")
+            for entry in pruned_relations:
+                f.write(entry + "\n")
+
+    return len(pruned_relations)
+
+
 def run_decay_calculations():
     """Apply freshness decay to all facts in index files."""
     now = datetime.now(timezone.utc)
     today_str = now.strftime("%Y-%m-%d")
     decayed_count = 0
     archived_count = 0
+    all_archived_facts = []
 
     for idx_file in INDEX_DIR.glob("*.md"):
         try:
@@ -115,6 +247,7 @@ def run_decay_calculations():
                 if "stale" not in new_line:
                     new_line += " stale"
                 facts_to_archive.append(new_line)
+                all_archived_facts.append(new_line)
                 archived_count += 1
                 decayed_count += 1
                 continue  # Don't include in new_lines
@@ -134,7 +267,10 @@ def run_decay_calculations():
                 for fact in facts_to_archive:
                     f.write(fact + "\n")
 
-    return decayed_count, archived_count
+    # Prune dangling relation edges from relations.md
+    pruned_relations_count = prune_dangling_relations(all_archived_facts)
+
+    return decayed_count, archived_count, pruned_relations_count
 
 
 def clean_old_archives():
@@ -249,9 +385,9 @@ def main():
     actions.append(f"emotional_read: {output}")
     max_exit_code = max(max_exit_code, code)
 
-    # 4. Run decay calculations
-    decayed, archived = run_decay_calculations()
-    actions.append(f"decay: {decayed} facts decayed, {archived} archived")
+    # 4. Run decay calculations & graph pruning
+    decayed, archived, pruned = run_decay_calculations()
+    actions.append(f"decay: {decayed} facts decayed, {archived} archived, {pruned} dangling relations pruned")
 
     # 5. Clean old archives
     deleted = clean_old_archives()
