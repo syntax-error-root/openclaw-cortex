@@ -110,7 +110,22 @@ OpenClaw Cortex couples high-dimensional semantic search with exact symbolic ind
 ```
 Query ────────► [ Dense Vector Embeddings ] ─────► Cosine Distance (0.70) ┐
         │                                                                   ├─► MMR Re-ranked Context
-        └─────► [ SQLite FTS5 Full-Text ]   ─────► BM25 Score     (0.30) ┘
+        └─────► [ In-Process SQLite FTS5 ]  ─────► BM25 Score     (0.30) ┘
+```
+
+### In-Process SQLite FTS5 Cache (`.cache/cortex_index.sqlite3`)
+
+While Markdown remains the human-editable source of truth, Cortex maintains a non-authoritative in-process SQLite cache using Python's standard `sqlite3` engine:
+- **Zero-Dependency**: No external database or C-compiler required.
+- **Sub-Millisecond BM25**: Drops fact retrieval from $O(N)$ filesystem parsing to microsecond token searches.
+- **Auto-Sync / Dirty Detection**: Compares filesystem `mtime` and file sizes on each query to automatically recompile dirty markdown changes.
+
+```bash
+# Inspect local FTS5 cache statistics
+python3 scripts/cortex_cache.py --status
+
+# Execute direct BM25 search benchmark
+python3 scripts/cortex_cache.py --search "telemetry cluster"
 ```
 
 ### OpenClaw Gateway Integration
@@ -215,6 +230,7 @@ openclaw-cortex/
 └── scripts/                   # Zero-dependency Python 3 automation
     ├── session_bootstrap.py   # Cold-start environment & context loader
     ├── heartbeat_maint.py     # Background indexer, decay auditor & narrate cycler
+    ├── cortex_cache.py        # In-process SQLite FTS5 BM25 cache & synchronizer
     ├── memory_index.py        # Entity & relationship heuristic extractor
     ├── memory_recall.py       # Deterministic knowledge graph traverser
     ├── emotional_read.py      # Operator sentiment & cadence classifier
