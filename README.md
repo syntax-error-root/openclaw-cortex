@@ -194,8 +194,8 @@ Cortex rejects static agent personas. Behavior is governed by an adaptive multi-
                         └───────────────────────────┘
 ```
 
-- **Stress Detection**: Reduces humor, boosts succinctness, prioritizes autonomous problem mitigation.
-- **Late-Night Modality**: Drops formality, dampens proactivity to avoid interrupting the operator.
+- **Stress & Velocity Detection**: Dynamically detects interaction velocity (<10s query bursts), sentence length contraction (>60% drop), and punctuation/caps acceleration. Reduces humor, boosts succinctness, and prioritizes autonomous problem mitigation.
+- **Late-Night Modality**: Drops formality, dampens proactivity to avoid interrupting the operator during off-hours.
 - **Contradiction Guard**: Scans incoming statements against [`scripts/antonyms.json`](scripts/antonyms.json) to flag conflicting truths inside [`memory/flags.md`](memory/flags.md).
 
 <br/>
