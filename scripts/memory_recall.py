@@ -58,14 +58,16 @@ def search_index_files(query, fact_type=None, recent_days=None):
     return results
 
 
-def search_relations(query, include_archived=False):
-    results = []
+def load_all_relations(include_archived=False):
+    """Load and parse relation edges from active and optional archived partitions."""
     files_to_check = [RELATIONS_FILE]
     if include_archived:
         archived_rel = ARCHIVE_DIR / "relations.md"
         if archived_rel.exists():
             files_to_check.append(archived_rel)
 
+    edges = []
+    pattern = re.compile(r"^-\s+(.+?)\s+--\[(.+?)\]-->\s+(.+?)(?:\s+(\[.*\]))?$")
     for rel_path in files_to_check:
         if not rel_path.exists():
             continue
@@ -75,12 +77,93 @@ def search_relations(query, include_archived=False):
                     stripped = line.strip()
                     if not stripped.startswith("- "):
                         continue
-                    if query and query.lower() not in stripped.lower():
-                        continue
-                    results.append(stripped)
+                    m = pattern.match(stripped)
+                    if m:
+                        edges.append({
+                            "subj": m.group(1).strip(),
+                            "rel": m.group(2).strip(),
+                            "obj": m.group(3).strip(),
+                            "line": stripped
+                        })
         except FileNotFoundError:
             pass
-    return results
+    return edges
+
+
+def search_relations(query, depth=2, include_archived=False):
+    """Perform recursive multi-hop graph traversal up to depth N."""
+    if not query:
+        return []
+
+    edges = load_all_relations(include_archived=include_archived)
+    if not edges:
+        return []
+
+    query_lower = query.strip().lower()
+    traversal_results = []
+    visited_edges = set()
+    visited_nodes = set()
+
+    # Step 1: Identify seed entities matching query
+    seed_nodes = set()
+    for edge in edges:
+        s_lower = edge["subj"].lower()
+        o_lower = edge["obj"].lower()
+        if query_lower in s_lower:
+            seed_nodes.add(edge["subj"])
+        if query_lower in o_lower:
+            seed_nodes.add(edge["obj"])
+
+    if not seed_nodes:
+        # Fallback: substring match on entire line
+        for edge in edges:
+            if query_lower in edge["line"].lower():
+                seed_nodes.add(edge["subj"])
+                seed_nodes.add(edge["obj"])
+
+    if not seed_nodes:
+        return []
+
+    current_frontier = set(seed_nodes)
+    visited_nodes.update(n.lower() for n in seed_nodes)
+
+    for hop in range(1, depth + 1):
+        next_frontier = set()
+        for edge in edges:
+            edge_key = (edge["subj"].lower(), edge["rel"].lower(), edge["obj"].lower())
+            if edge_key in visited_edges:
+                continue
+
+            s_lower = edge["subj"].lower()
+            o_lower = edge["obj"].lower()
+
+            matched_node = None
+            neighbor_node = None
+
+            for frontier_node in current_frontier:
+                fn_lower = frontier_node.lower()
+                if fn_lower == s_lower or fn_lower in s_lower:
+                    matched_node = edge["subj"]
+                    neighbor_node = edge["obj"]
+                    break
+                elif fn_lower == o_lower or fn_lower in o_lower:
+                    matched_node = edge["obj"]
+                    neighbor_node = edge["subj"]
+                    break
+
+            if matched_node:
+                visited_edges.add(edge_key)
+                hop_prefix = f"[Hop {hop}] " if depth > 1 else ""
+                traversal_results.append(f"{hop_prefix}{edge['line']}")
+                if neighbor_node.lower() not in visited_nodes:
+                    visited_nodes.add(neighbor_node.lower())
+                    next_frontier.add(neighbor_node)
+
+        current_frontier = next_frontier
+        if not current_frontier:
+            break
+
+    return traversal_results
 
 
 def search_archived(query, recent_days=None):
@@ -135,6 +218,7 @@ def main():
     parser.add_argument("--recent", action="store_true", help="Only facts from recent days")
     parser.add_argument("--days", type=int, default=7, help="Number of recent days (default: 7)")
     parser.add_argument("--include-archived", action="store_true", help="Include archived facts")
+    parser.add_argument("--depth", type=int, default=2, help="Graph traversal recursion depth (1-5, default: 2)")
     args = parser.parse_args()
 
     if not args.about and not args.type:
@@ -142,9 +226,10 @@ def main():
         sys.exit(2)
 
     query = args.about or ""
+    depth = max(1, min(5, args.depth))
     recent_days = args.days if args.recent else None
     results = search_index_files(query, args.type, recent_days)
-    relations = search_relations(query, include_archived=args.include_archived) if query else []
+    relations = search_relations(query, depth=depth, include_archived=args.include_archived) if query else []
     if args.include_archived:
         results.extend(search_archived(query, recent_days))
     output = format_results(results, relations)

@@ -229,11 +229,15 @@ Run the heartbeat worker to parse daily logs, recalculate decay factors, and res
 python3 scripts/heartbeat_maint.py
 ```
 
-### 3. Relational Memory Query
-Query the knowledge graph for typed entities, events, or preferences:
+### 3. Multi-Hop Relational Graph Query
+Query the knowledge graph with recursive multi-hop depth traversal ($N=1$ to $5$):
 
 ```bash
-python3 scripts/memory_recall.py --about "Cortex" --type projects
+# Standard 2-hop traversal
+python3 scripts/memory_recall.py --about "Telemetry Service" --depth 2
+
+# Extended 3-hop traversal including archived provenance edges
+python3 scripts/memory_recall.py --about "Telemetry Service" --depth 3 --include-archived
 ```
 
 <br/>
