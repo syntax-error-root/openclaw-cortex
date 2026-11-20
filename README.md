@@ -26,7 +26,7 @@
 [Cognitive Anatomy](#-cognitive-anatomy) •
 [Hybrid Retrieval](#-hybrid-neural-symbolic-retrieval) •
 [Personality Dynamics](#-the-affective-engine) •
-[Quickstart](#-ignition-protocol) •
+[Deployment & Usage](#-deployment-integrating-with-openclaw-workspace) •
 [Ecosystem](#-ecosystem-tapestry)
 
 ---
@@ -266,32 +266,168 @@ python3 scripts/cortex_tools.py flag --fact-a "Likes A" --fact-b "Likes B" --rea
 
 ---
 
-## 🚀 Ignition Protocol
+## 🚀 Deployment: Integrating with OpenClaw Workspace
 
-### 1. Initialize Cognitive State
-Execute the bootstrap sequence to generate foundational state structures and load session memory:
+In [OpenClaw](https://openclaw.ai), agents execute within a dedicated workspace directory (default: `~/.openclaw/workspace` or defined under `agents.defaults.workspace` in `~/.openclaw/openclaw.json`). Cortex is designed to act as the cognitive heart of this workspace, equipping the agent with structured identity, multi-tier memory, and native tools.
+
+### Deployment Architecture
+
+```
+OpenClaw Runtime (~/.openclaw/)
+├── openclaw.json                   <-- Gateway configuration (hybrid search + vector)
+└── workspace/                      <-- Replaced by / containing OpenClaw Cortex
+    ├── AGENTS.md                   <-- Operational handbook & behavioral guidelines
+    ├── SOUL.md                     <-- Core consciousness axioms & growth tenets
+    ├── USER.md                     <-- Operator profile & communication preferences
+    ├── openclaw.plugin.json        <-- Tool definitions (cortex_recall, relate, flag)
+    ├── identity/                   <-- Self concept, values, and vocal traits
+    ├── memory/                     <-- Tripartite state, narrative, and knowledge graph
+    └── scripts/                    <-- In-process FTS5 cache, decay & recall engines
+```
+
+---
+
+### Step 1: Deploy into OpenClaw Workspace
+
+Choose one of two deployment patterns:
+
+#### Option A: Direct Workspace Replacement (Recommended)
+Replace the default OpenClaw workspace with the complete Cortex cognitive substrate:
 
 ```bash
+# 1. Back up existing workspace if present
+[ -d "$HOME/.openclaw/workspace" ] && mv "$HOME/.openclaw/workspace" "$HOME/.openclaw/workspace.bak.$(date +%s)"
+
+# 2. Clone Cortex directly as your active OpenClaw workspace
+git clone https://github.com/syntax-error-root/openclaw-cortex.git "$HOME/.openclaw/workspace"
+
+# 3. Enter the workspace directory
+cd "$HOME/.openclaw/workspace"
+```
+
+#### Option B: Inject into an Existing Workspace
+If you already maintain an active workspace with other code repositories:
+
+```bash
+# Clone Cortex to a temporary staging path
+git clone https://github.com/syntax-error-root/openclaw-cortex.git /tmp/openclaw-cortex
+
+# Copy Cortex cognitive directories and configurations into your workspace
+cp -rv /tmp/openclaw-cortex/{AGENTS.md,SOUL.md,TOOLS.md,USER.md,HEARTBEAT.md,openclaw.plugin.json,identity,memory,scripts,skills} "$HOME/.openclaw/workspace/"
+
+# Clean up staging directory
+rm -rf /tmp/openclaw-cortex
+```
+
+---
+
+### Step 2: Calibrate Operator Profile (`USER.md`)
+
+Update [`USER.md`](USER.md) with your operational parameters:
+
+```markdown
+# USER.md - Operator Profile
+
+- **Name:** Your Name or Operator Call-sign
+- **Timezone:** UTC (or your local IANA timezone e.g. America/New_York)
+- **Communication Style:** Direct, concise, technical
+- **Active Projects:** Project-Alpha, Infrastructure-V2
+```
+
+---
+
+### Step 3: Configure OpenClaw Gateway (`~/.openclaw/openclaw.json`)
+
+Ensure OpenClaw is configured to index the workspace's memory layers and register the hybrid retrieval system:
+
+```json5
+{
+  "agents": {
+    "defaults": {
+      "workspace": "~/.openclaw/workspace",
+      "memorySearch": {
+        "enabled": true,
+        "provider": "ollama",               // Or "local", "gemini", "openai"
+        "model": "mxbai-embed-large",
+        "store": {
+          "vector": {
+            "enabled": true,
+            "extensionPath": "bundled"
+          }
+        },
+        "hybrid": {
+          "enabled": true,
+          "weightVector": 0.7,
+          "weightKeyword": 0.3
+        },
+        "extraPaths": [
+          "identity"
+        ]
+      }
+    }
+  }
+}
+```
+
+---
+
+### Step 4: Cold-Start Bootstrap
+
+Initialize runtime memory state, generate initial index tables, and precompile the SQLite FTS5 cache:
+
+```bash
+cd "$HOME/.openclaw/workspace"
 python3 scripts/session_bootstrap.py
 ```
 
-### 2. Trigger Autonomous Heartbeat
-Run the heartbeat worker to parse daily logs, recalculate decay factors, and resolve contradictions:
+Expected output:
+```text
+[+] Cortex bootstrap completed.
+[+] Loaded working state: memory/state.json
+[+] Persona traits calibrated: Formal=0.65, Proactive=0.70, Humor=0.20
+[+] In-process SQLite FTS5 cache synced.
+```
 
+---
+
+### Step 5: Configure Maintenance Heartbeat
+
+Cortex includes an automated garbage collection and decay maintenance daemon. Configure OpenClaw's heartbeat or a system `crontab` to invoke maintenance periodically:
+
+```bash
+# Add to user crontab (runs every 4 hours)
+crontab -e
+
+# Insert entry:
+0 */4 * * * cd $HOME/.openclaw/workspace && python3 scripts/heartbeat_maint.py >> memory/heartbeat.log 2>&1
+```
+
+Or trigger manual heartbeat maintenance at any time:
 ```bash
 python3 scripts/heartbeat_maint.py
 ```
 
-### 3. Multi-Hop Relational Graph Query
-Query the knowledge graph with recursive multi-hop depth traversal ($N=1$ to $5$):
+---
+
+### Step 6: Verify Agent Tool Calling & Memory Graph
+
+Verify that both the CLI tools and the native OpenClaw tool integration work seamlessly:
 
 ```bash
-# Standard 2-hop traversal
-python3 scripts/memory_recall.py --about "Telemetry Service" --depth 2
+# 1. Multi-hop knowledge graph retrieval (e.g. depth = 2)
+python3 scripts/memory_recall.py --about "Operator" --depth 2
 
-# Extended 3-hop traversal including archived provenance edges
-python3 scripts/memory_recall.py --about "Telemetry Service" --depth 3 --include-archived
+# 2. In-process FTS5 full-text cache query
+python3 scripts/cortex_cache.py --search "preferences"
+
+# 3. Native tool manifest invocation test
+python3 scripts/cortex_tools.py recall --query "Operator" --depth 2 --json
 ```
+
+When communicating in conversation, the OpenClaw agent will autonomously invoke:
+- `cortex_recall(query="...", depth=2)` to recall multi-hop relationships.
+- `cortex_relate(subject="...", predicate="...", object="...")` to store new connections.
+- `cortex_flag(fact_a="...", fact_b="...", reason="...")` when conflicting statements arise.
 
 <br/>
 
