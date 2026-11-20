@@ -139,19 +139,65 @@ def extract_facts(lines, known_names):
     return facts
 
 
-def format_fact_entry(fact, date_str):
-    return f"- {fact['text']} [added: {date_str}] [reinforced: {date_str}] [freshness: 1.0] [last_decay: {date_str}] [core: false]"
+def format_fact_entry(fact, date_str, stability=7.0):
+    return f"- {fact['text']} [added: {date_str}] [reinforced: {date_str}] [freshness: 1.00] [stability: {stability:.1f}] [last_decay: {date_str}] [core: false]"
 
 
-def append_to_index(target_file, entries):
+def append_or_reinforce_in_index(target_file, facts, date_str):
+    """Append new facts or reinforce existing facts (doubling stability factor S)."""
     idx_path = INDEX_DIR / f"{target_file}.md"
     if not idx_path.exists():
         idx_path.parent.mkdir(parents=True, exist_ok=True)
         with open(idx_path, "w") as f:
             f.write(f"# {target_file.title()} Index\n\n")
-    with open(idx_path, "a") as f:
-        for entry in entries:
-            f.write(entry + "\n")
+        existing_lines = []
+    else:
+        with open(idx_path, "r") as f:
+            existing_lines = f.readlines()
+
+    def extract_fact_core(line):
+        stripped = line.strip()
+        if not stripped.startswith("- "):
+            return ""
+        idx = stripped.find("[added:")
+        if idx != -1:
+            return stripped[2:idx].strip().lower()
+        return stripped[2:].strip().lower()
+
+    updated_lines = list(existing_lines)
+
+    for fact in facts:
+        fact_text = fact["text"].strip()
+        fact_core = fact_text.lower()
+        matched = False
+
+        for i, line in enumerate(updated_lines):
+            existing_core = extract_fact_core(line)
+            if existing_core and (fact_core == existing_core or fact_core in existing_core or existing_core in fact_core):
+                # Reinforce existing fact: double stability S, reset freshness to 1.00
+                stripped = line.strip()
+                s_match = re.search(r"\[stability:\s*([\d.]+)\]", stripped)
+                current_s = float(s_match.group(1)) if s_match else 7.0
+                new_s = current_s * 2.0  # S doubles on reinforcement
+
+                new_line = re.sub(r"\[reinforced:\s*\d{4}-\d{2}-\d{2}\]", f"[reinforced: {date_str}]", stripped)
+                new_line = re.sub(r"\[freshness:\s*[\d.]+\]", "[freshness: 1.00]", new_line)
+                new_line = re.sub(r"\[last_decay:\s*\d{4}-\d{2}-\d{2}\]", f"[last_decay: {date_str}]", new_line)
+                if s_match:
+                    new_line = re.sub(r"\[stability:\s*[\d.]+\]", f"[stability: {new_s:.1f}]", new_line)
+                else:
+                    new_line = re.sub(r"(\[freshness:\s*[\d.]+\])", rf"\1 [stability: {new_s:.1f}]", new_line)
+                new_line = new_line.replace(" stale", "")
+                updated_lines[i] = new_line + "\n"
+                matched = True
+                break
+
+        if not matched:
+            new_entry = f"- {fact_text} [added: {date_str}] [reinforced: {date_str}] [freshness: 1.00] [stability: 7.0] [last_decay: {date_str}] [core: false]\n"
+            updated_lines.append(new_entry)
+
+    with open(idx_path, "w") as f:
+        f.writelines(updated_lines)
 
 
 def append_to_relations(subject, rel_type, obj, date_str):
@@ -239,8 +285,7 @@ def main():
             elif fact["type"] == "relation" and fact.get("object"):
                 append_to_relations(fact["subject"], fact["predicate"], fact["object"], date_str)
         for target, target_facts in by_target.items():
-            entries = [format_fact_entry(f, date_str) for f in target_facts]
-            append_to_index(target, entries)
+            append_or_reinforce_in_index(target, target_facts, date_str)
         all_facts.extend(facts)
         flags = check_contradictions(facts, antonyms)
         append_flags(flags)
