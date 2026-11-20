@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "id": "openclaw-cortex",
+  "name": "OpenClaw Cortex",
+  "description": "Three-tier memory substrate, multi-hop knowledge graph, and affective cognitive engine for OpenClaw agents.",
+  "version": "1.3.0",
+  "author": "OpenClaw Cortex Contributors",
+  "homepage": "https://github.com/syntax-error-root/openclaw-cortex",
+  "license": "MIT",
+  "entry": "scripts/cortex_tools.py",
+  "tools": [
+    {
+      "name": "cortex_recall",
+      "description": "Query tripartite memory, structured indexes, and multi-hop relational knowledge graph with BM25 ranking.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Entity, topic, or keyword to search for."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["people", "projects", "preferences", "topics"],
+            "description": "Optional category filter."
+          },
+          "depth": {
+            "type": "integer",
+            "default": 2,
+            "minimum": 1,
+            "maximum": 5,
+            "description": "Multi-hop graph traversal recursion depth."
+          },
+          "include_archived": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include cold archived facts and historical relations."
+          }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "cortex_relate",
+      "description": "Record or update a typed directed edge between two entities in the knowledge graph.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Source entity name (e.g. 'Telemetry Service')."
+          },
+          "predicate": {
+            "type": "string",
+            "description": "Relationship type (e.g. 'uses', 'depends_on', 'works_on', 'hosted_on', 'manages')."
+          },
+          "object": {
+            "type": "string",
+            "description": "Target entity name (e.g. 'TimescaleDB')."
+          }
+        },
+        "required": ["subject", "predicate", "object"]
+      }
+    },
+    {
+      "name": "cortex_flag",
+      "description": "Record an epistemic contradiction between conflicting facts for subsequent operator review.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fact_a": {
+            "type": "string",
+            "description": "Existing belief or historical fact."
+          },
+          "fact_b": {
+            "type": "string",
+            "description": "New conflicting assertion."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Explanation of contradiction or conflict hypothesis."
+          }
+        },
+        "required": ["fact_a", "fact_b", "reason"]
+      }
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "defaultDepth": {
+        "type": "integer",
+        "default": 2,
+        "description": "Default graph recursion depth for cortex_recall."
+      },
+      "autoPruneOrphans": {
+        "type": "boolean",
+        "default": true,
+        "description": "Automatically prune dangling edges during heartbeat cycles."
+      }
+    },
+    "additionalProperties": false
+  }
+}
