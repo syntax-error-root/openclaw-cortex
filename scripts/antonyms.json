@@ -1,0 +1,20 @@
+{
+  "likes": ["dislikes", "hates"],
+  "dislikes": ["likes", "loves"],
+  "prefers": ["avoids"],
+  "avoids": ["prefers"],
+  "loves": ["hates"],
+  "hates": ["loves"],
+  "always": ["never"],
+  "never": ["always"],
+  "morning": ["night", "evening"],
+  "night": ["morning"],
+  "casual": ["formal"],
+  "formal": ["casual"],
+  "fast": ["slow"],
+  "slow": ["fast"],
+  "simple": ["complex"],
+  "complex": ["simple"],
+  "quiet": ["loud", "noisy"],
+  "loud": ["quiet"]
+}

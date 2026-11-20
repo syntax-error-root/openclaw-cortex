@@ -1,0 +1,21 @@
+# Local execution logs
+scripts/logs/*.log
+scripts/logs/last_mood.json
+scripts/logs/indexed_files.txt
+scripts/logs/reflection_prompts.md
+
+# Session logs
+memory/daily/*.md
+!memory/daily/.gitkeep
+
+# Local settings
+.claude/
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Python build
+__pycache__/
+*.pyc
