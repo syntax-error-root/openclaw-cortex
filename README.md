@@ -85,7 +85,19 @@ Monolithic agent memory designs fail in predictable ways:
 | :--- | :--- | :--- | :--- |
 | **`Layer 1: State`** | [`memory/state.json`](memory/state.json) | Continuous, instant read/write | Zero-latency context injection containing operational mood, open threads, and active projects. |
 | **`Layer 2: Narrative`** | [`memory/narrative/`](memory/narrative/) | Sliding window (500-word limit) | Compresses daily chat logs into a coherent autobiography (`current_chapter.md`). Archives historical epochs into `chapters/` and milestone events into `scenes/`. |
-| **`Layer 3: Index`** | [`memory/index/`](memory/index/) | Persistent with automated decay | Categorized knowledge stores (`people.md`, `projects.md`, `preferences.md`, `topics.md`) with explicit link topologies ([`relations.md`](memory/relations.md)). |
+| **`Layer 3: Index`** | [`memory/index/`](memory/index/) | Ebbinghaus decay ($R = e^{-t/S}$) | Categorized knowledge stores (`people.md`, `projects.md`, `preferences.md`, `topics.md`) with explicit link topologies ([`relations.md`](memory/relations.md)). |
+
+<br/>
+
+### ⏳ Spaced-Repetition Decay (Ebbinghaus Forgetting Curve)
+
+Fact retention in Layer 3 is governed by an exponential spaced-repetition model:
+
+$$R = e^{-\frac{t}{S}}$$
+
+- **Dynamic Stability Factor ($S$)**: Starts at $S = 7.0$ days. Each time a fact is reinforced in daily logs, $S$ doubles ($7 \to 14 \to 28 \to \dots$), cementing frequently validated knowledge.
+- **Automated Trivia Pruning**: Single-occurrence trivia drops below threshold ($R < 0.30$) and flushes to cold storage in [`memory/archive/`](memory/archive/) within 7–14 days.
+- **Asymptotic Core Immunity**: System-critical facts (`[core: true]`) hold an asymptotic floor ($R \ge 0.50$), granting permanent retention.
 
 <br/>
 

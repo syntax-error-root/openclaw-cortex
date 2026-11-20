@@ -89,7 +89,7 @@ def create_seed_files():
 
     # Index files
     index_headers = {
-        "people": "- Operator: User, timezone UTC [added: " + now_str + "] [reinforced: " + now_str + "] [freshness: 1.0] [last_decay: " + now_str + "] [core: true]",
+        "people": "- Operator: User, timezone UTC [added: " + now_str + "] [reinforced: " + now_str + "] [freshness: 1.00] [stability: 90.0] [last_decay: " + now_str + "] [core: true]",
         "projects": "",
         "preferences": "",
         "topics": "",

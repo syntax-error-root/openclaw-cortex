@@ -9,6 +9,7 @@ Exit codes: 0=success, 1=partial (some tasks failed), 2=fatal
 """
 
 import json
+import math
 import re
 import subprocess
 import sys
@@ -213,6 +214,7 @@ def run_decay_calculations():
             last_decay_m = re.search(r"\[last_decay:\s*(\d{4}-\d{2}-\d{2})\]", stripped)
             reinforced_m = re.search(r"\[reinforced:\s*(\d{4}-\d{2}-\d{2})\]", stripped)
             core_m = re.search(r"\[core:\s*(true|false)\]", stripped)
+            stability_m = re.search(r"\[stability:\s*([\d.]+)\]", stripped)
 
             if not freshness_m or not last_decay_m:
                 new_lines.append(line)
@@ -221,6 +223,7 @@ def run_decay_calculations():
             freshness = float(freshness_m.group(1))
             last_decay = last_decay_m.group(1)
             is_core = core_m and core_m.group(1) == "true"
+            stability = float(stability_m.group(1)) if stability_m else (90.0 if is_core else 7.0)
 
             # Check if decay needs calculation (>24 hours since last)
             last_decay_date = datetime.strptime(last_decay, "%Y-%m-%d").replace(tzinfo=timezone.utc)
@@ -228,18 +231,22 @@ def run_decay_calculations():
                 new_lines.append(line)
                 continue
 
-            # Calculate decay
+            # Calculate Ebbinghaus spaced-repetition exponential decay: R = e^(-t / S)
             reinforced = reinforced_m.group(1) if reinforced_m else last_decay
             reinforced_date = datetime.strptime(reinforced, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            days_since = (now - reinforced_date).days
-            new_freshness = max(0.0, freshness - (0.05 * days_since))
+            t_days = max(0.0, float((now - reinforced_date).days))
+            new_freshness = math.exp(-t_days / stability)
 
-            # Core floor
+            # Core floor (asymptotic immunity for critical core facts)
             if is_core:
                 new_freshness = max(CORE_FLOOR, new_freshness)
 
             # Update line
             new_line = re.sub(r"\[freshness:\s*[\d.]+\]", f"[freshness: {new_freshness:.2f}]", stripped)
+            if stability_m:
+                new_line = re.sub(r"\[stability:\s*[\d.]+\]", f"[stability: {stability:.1f}]", new_line)
+            else:
+                new_line = re.sub(r"(\[freshness:\s*[\d.]+\])", rf"\1 [stability: {stability:.1f}]", new_line)
             new_line = re.sub(r"\[last_decay:\s*\d{4}-\d{2}-\d{2}\]", f"[last_decay: {today_str}]", new_line)
 
             # Mark stale
