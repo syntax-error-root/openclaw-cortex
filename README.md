@@ -206,11 +206,16 @@ Cortex rejects static agent personas. Behavior is governed by an adaptive multi-
 
 ```
 openclaw-cortex/
+├── openclaw.plugin.json       # Native OpenClaw Plugin & Tool Manifest
 ├── AGENTS.md                  # Behavioral handbook, security boundaries & red lines
 ├── SOUL.md                    # Core consciousness axioms & growth tenets
 ├── USER.md                    # Operator profile template
 ├── TOOLS.md                   # Environment hardware, TTS & endpoint register
 ├── HEARTBEAT.md               # Periodic cron protocol specifications
+│
+├── skills/                    # Packaged agent skills
+│   └── openclaw-cortex/
+│       └── SKILL.md           # LLM tool guidance & operational directives
 │
 ├── identity/                  # Metacognitive self-constructs
 │   ├── self_concept.md        # Internal perspective & role understanding
@@ -228,6 +233,7 @@ openclaw-cortex/
 │   └── archive/               # Decayed, historical memories
 │
 └── scripts/                   # Zero-dependency Python 3 automation
+    ├── cortex_tools.py        # OpenClaw native tool execution engine
     ├── session_bootstrap.py   # Cold-start environment & context loader
     ├── heartbeat_maint.py     # Background indexer, decay auditor & narrate cycler
     ├── cortex_cache.py        # In-process SQLite FTS5 BM25 cache & synchronizer
@@ -235,6 +241,25 @@ openclaw-cortex/
     ├── memory_recall.py       # Deterministic knowledge graph traverser
     ├── emotional_read.py      # Operator sentiment & cadence classifier
     └── persona_select.py      # Context-aware behavioral weight synthesizer
+```
+
+<br/>
+
+## 🛠️ Native OpenClaw Agent Tools
+
+Cortex packages native agent tools declared in [`openclaw.plugin.json`](openclaw.plugin.json) and guided by [`skills/openclaw-cortex/SKILL.md`](skills/openclaw-cortex/SKILL.md):
+
+| Tool | Parameters | Purpose |
+| :--- | :--- | :--- |
+| **`cortex_recall`** | `query`, `type`, `depth`, `include_archived` | Executes hybrid BM25 full-text recall and multi-hop graph expansion ($N=1\text{--}5$) during active turns. |
+| **`cortex_relate`** | `subject`, `predicate`, `object` | Autonomously establishes or updates typed directed edges in [`memory/relations.md`](memory/relations.md). |
+| **`cortex_flag`** | `fact_a`, `fact_b`, `reason` | Records epistemic contradiction flags in [`memory/flags.md`](memory/flags.md) when user statements conflict with prior assertions. |
+
+```bash
+# Execute tools directly via CLI or agent tool runners:
+python3 scripts/cortex_tools.py recall --query "TimescaleDB" --depth 2 --json
+python3 scripts/cortex_tools.py relate --subject "Service" --predicate "uses" --object "DB"
+python3 scripts/cortex_tools.py flag --fact-a "Likes A" --fact-b "Likes B" --reason "Conflict"
 ```
 
 <br/>
