@@ -406,11 +406,19 @@ def main():
     if resolved > 0:
         actions.append(f"flags: {resolved} auto-resolved")
 
-    # 7. Update state
+    # 7. Synchronize SQLite FTS5 cache
+    try:
+        from cortex_cache import sync_cache
+        synced = sync_cache(force=True)
+        actions.append(f"fts_cache: {'synchronized' if synced else 'up_to_date'}")
+    except Exception as e:
+        actions.append(f"fts_cache: failed ({e})")
+
+    # 8. Update state
     update_state()
     actions.append("state: updated")
 
-    # 8. Weekly: run reflection
+    # 9. Weekly: run reflection
     if is_weekly():
         output, code = run_script("reflect.py")
         actions.append(f"reflect: {output}")

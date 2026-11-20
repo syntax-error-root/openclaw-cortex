@@ -8,7 +8,10 @@ scripts/logs/reflection_prompts.md
 memory/daily/*.md
 !memory/daily/.gitkeep
 
-# Local settings
+# Local settings & cache
+.cache/
+*.sqlite3
+*.sqlite3-journal
 .claude/
 .vscode/
 .idea/

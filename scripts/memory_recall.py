@@ -26,7 +26,23 @@ def parse_date(line, tag="added"):
     return m.group(1) if m else "unknown"
 
 
-def search_index_files(query, fact_type=None, recent_days=None):
+def search_index_files(query, fact_type=None, recent_days=None, include_archived=False):
+    """Search index files, prioritizing in-process SQLite FTS5 cache with BM25 ranking."""
+    # 1. Fast-path: In-process SQLite FTS5 cache
+    try:
+        from cortex_cache import query_facts
+        cache_results = query_facts(
+            query_str=query,
+            category=fact_type,
+            recent_days=recent_days,
+            include_archived=include_archived
+        )
+        if cache_results is not None:
+            return cache_results
+    except Exception:
+        pass
+
+    # 2. Resilient fallback: Direct markdown file scan
     results = []
     if fact_type:
         files = [INDEX_DIR / f"{fact_type}.md"]
@@ -228,9 +244,9 @@ def main():
     query = args.about or ""
     depth = max(1, min(5, args.depth))
     recent_days = args.days if args.recent else None
-    results = search_index_files(query, args.type, recent_days)
+    results = search_index_files(query, args.type, recent_days, include_archived=args.include_archived)
     relations = search_relations(query, depth=depth, include_archived=args.include_archived) if query else []
-    if args.include_archived:
+    if args.include_archived and not results:
         results.extend(search_archived(query, recent_days))
     output = format_results(results, relations)
     print(output)
