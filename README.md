@@ -1,5 +1,10 @@
 # OpenClaw Cortex
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-brightgreen.svg)](https://www.python.org/)
+[![OpenClaw Ecosystem](https://img.shields.io/badge/ecosystem-OpenClaw-orange.svg)](https://openclaw.ai)
+
+
 A structured three-tier memory architecture and adaptive behavioral framework for OpenClaw autonomous agents.
 
 ## System Overview
@@ -104,3 +109,16 @@ openclaw memory status --deep
    ```bash
    python3 scripts/memory_recall.py --about "project" --type projects
    ```
+
+## Related Open-Source Projects & Ecosystem
+
+OpenClaw Cortex integrates with and builds upon several key open-source technologies:
+
+- **[OpenClaw](https://openclaw.ai)**: The extensible, markdown-first agent execution runtime.
+- **[sqlite-vec](https://github.com/asg017/sqlite-vec)**: Extremely fast vector search extension for SQLite, powering local hybrid retrieval without external vector databases.
+- **[Ollama](https://github.com/ollama/ollama)**: Local model execution layer for generating private vector embeddings (e.g. `mxbai-embed-large`).
+- **[SQLite FTS5](https://www.sqlite.org/fts5.html)**: Native inverted full-text search index providing BM25 keyword matching for hybrid fusion.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
